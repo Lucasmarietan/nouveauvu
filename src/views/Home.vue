@@ -1,19 +1,7 @@
 <template>
   <div class="home">
     <h1>Donations</h1>
-    <p>
-      Montant
-      <input type="number" v-model.number="montant" />
-      <button
-        v-on:click="ajouter()"
-        v-bind:disabled="montant !== '' && montant <= 0"
-      >
-        ajouter
-      </button>
-    </p>
-    <div v-if="montant !== '' && montant <= 0" class="error">
-      Montant {{ montant || chf }} doit être suppérieur à 0
-    </div>
+    <ajouter-montant v-on:ajouter="ajouter"></ajouter-montant>
     <p>
       <label>
         Recent
@@ -24,61 +12,77 @@
         <input type="radio" name="sortType" value="top" v-model="sortType" />
       </label>
     </p>
-    <ul>
-      <li
-        v-bind:class="{ high: n.value > 9 }"
-        v-for="(n, index) in sortedList"
-        v-bind:key="index"
-      >
-        <img :src="n.value | imgURL" class="badge" />
-        {{ n.value | chf }}
-        <button v-on:click="supprimer(n)">x</button>
-      </li>
-    </ul>
+    <transition-group name="flip-list" tag="ul">
+      <list-item
+        v-for="n in sortedList"
+        v-bind:key="n.id"
+        v-bind:item="n"
+        v-on:supprimer="supprimer(n)"
+      ></list-item>
+    </transition-group>
     <p>Total : {{ total | chf }}</p>
+    <ajouter-montant v-on:ajouter="ajouter"></ajouter-montant>
   </div>
 </template>
-
 <script>
+import ListItem from "@/components/ListItem";
+import AjouterMontant from "@/components/AjouterMontant";
+import { v4 as uuidv4 } from "uuid";
+
+const APP_KEY = "MaListe";
+
 function createMontant(value) {
   return {
+    id: uuidv4(),
     value
   };
 }
 export default {
   name: "Home",
   data() {
+    const json2 = localStorage.getItem("key_sort_type");
+    let sortType = "recent";
+    if (json2) {
+      try {
+        sortType = JSON.parse(json2);
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
     return {
       montant: "",
       montants: [createMontant(1), createMontant(2)],
-      sortType: "recent"
+      sortType: sortType
     };
   },
+  mounted() {
+    // Quand le composant est dans la page
+    const json = localStorage.getItem(APP_KEY);
+    if (json) {
+      this.montants = JSON.parse(json);
+    }
+  },
   methods: {
-    ajouter() {
-      this.montants.push(createMontant(this.montant));
+    ajouter(montant) {
+      this.montants.push(createMontant(montant));
       this.montant = "";
+      this.saveData();
     },
     supprimer(n) {
       const index = this.montants.indexOf(n);
       if (index >= 0) {
         this.montants.splice(index, 1);
       }
+      this.saveData();
+    },
+    saveData() {
+      localStorage.setItem(APP_KEY, JSON.stringify(this.montants));
     }
   },
-  filters: {
-    imgURL(value) {
-      let level = 1;
-      if (value > 10) {
-        level = 2;
-      }
-      if (value > 20) {
-        level = 3;
-      }
-      return `https://gistcdn.githack.com/bfritscher/6ff8e74b80d44616944843fe83cc5d19/raw/2d4e25748fbbe681681932444a7ef339c90d4dde/chevron_${level}.svg`;
-    },
-    chf(value) {
-      return `${value.toFixed(2)} CHF`;
+  watch: {
+    sortType() {
+      localStorage.setItem("key_sort_type", JSON.stringify(this.sortType));
     }
   },
   computed: {
@@ -96,20 +100,14 @@ export default {
     total() {
       return this.montants.reduce((total, e) => total + e.value, 0);
     }
+  },
+  components: {
+    "list-item": ListItem,
+    "ajouter-montant": AjouterMontant
   }
 };
 </script>
 
-<style scoped>
-.error {
-  color: red;
-}
+<style scoped></style>
 
-.high {
-  color: gold;
-}
-
-.badge {
-  width: 30px;
-}
-</style>
+<style></style>
