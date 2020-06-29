@@ -44,7 +44,7 @@ export default {
   height: 100px;
 }
 
-.img{
+.img {
   float: left;
 }
 </style>
